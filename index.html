@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Expoferia San Guillermo — Control de Entradas</title>
+<style>
+  /* ── Reset y base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand:    #1a5fa8;
+    --brand-lt: #e8f1fb;
+    --ok:       #1a7a4a;
+    --ok-lt:    #e6f4ec;
+    --err:      #b91c1c;
+    --err-lt:   #fde8e8;
+    --warn:     #92400e;
+    --warn-lt:  #fef3cd;
+    --text:     #1a1a1a;
+    --muted:    #6b7280;
+    --border:   #e5e7eb;
+    --surface:  #f9fafb;
+    --white:    #ffffff;
+    --radius:   10px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--surface); color: var(--text); min-height: 100vh; }
+
+  /* ── Header ── */
+  header { background: var(--brand); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  header svg { flex-shrink: 0; }
+  header h1 { font-size: 16px; font-weight: 600; line-height: 1.2; }
+  header p  { font-size: 12px; opacity: .85; }
+
+  /* ── Tabs ── */
+  nav { display: flex; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav button { flex: 1; min-width: 90px; padding: 12px 8px; font-size: 13px; font-weight: 500; border: none; background: none; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; }
+  nav button.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+  /* ── Layout ── */
+  main { max-width: 520px; margin: 0 auto; padding: 16px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+
+  /* ── Forms ── */
+  label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 4px; margin-top: 10px; }
+  label:first-child { margin-top: 0; }
+  select, input[type=text], input[type=number] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 15px; background: var(--white);
+    color: var(--text); appearance: none; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(26,95,168,.12); }
+
+  /* ── Buttons ── */
+  .btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; transition: opacity .15s; margin-top: 12px; }
+  .btn:active { opacity: .85; transform: scale(.98); }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-outline  { background: var(--white); color: var(--brand); border: 1.5px solid var(--brand); }
+  .btn-sm { font-size: 13px; padding: 8px 12px; width: auto; margin-top: 0; }
+
+  /* ── Scanner ── */
+  #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; min-height: 240px; }
+  #reader video { width: 100% !important; }
+  .scan-placeholder { min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 13px; border: 2px dashed var(--border); border-radius: 10px; }
+
+  /* ── Result ── */
+  .result { display: none; border-radius: 10px; padding: 14px 16px; margin-top: 12px; font-size: 14px; }
+  .result.ok  { display: flex; gap: 10px; align-items: flex-start; background: var(--ok-lt); color: var(--ok); border: 1px solid #a7d7bc; }
+  .result.err { display: flex; gap: 10px; align-items: flex-start; background: var(--err-lt); color: var(--err); border: 1px solid #f5b7b7; }
+  .result .icon { font-size: 22px; line-height: 1; }
+  .result strong { display: block; font-size: 15px; margin-bottom: 2px; }
+
+  /* ── Stats ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+  .stat-box { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
+  .stat-n { font-size: 26px; font-weight: 700; }
+  .stat-l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stat-n.ok   { color: var(--ok); }
+  .stat-n.warn { color: var(--warn); }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--white); }
+  th { padding: 9px 10px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-ok   { background: var(--ok-lt);   color: var(--ok); }
+  .badge-pend { background: var(--warn-lt); color: var(--warn); }
+
+  /* ── QR Preview ── */
+  .qr-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .qr-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; width: calc(50% - 5px); }
+  .qr-card canvas { display: block; margin: 0 auto 6px; }
+  .qr-card .qr-id { font-size: 12px; font-weight: 700; font-family: monospace; }
+  .qr-card .qr-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Filters ── */
+  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .filters select { font-size: 13px; padding: 8px 10px; }
+
+  /* ── Loader ── */
+  .loader { text-align: center; padding: 24px; color: var(--muted); font-size: 14px; }
+
+  /* ── Config warning ── */
+  .config-banner { background: var(--warn-lt); border: 1px solid #f5c97a; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--warn); margin-bottom: 14px; }
+  .config-banner strong { display: block; margin-bottom: 4px; }
+  .config-banner a { color: var(--brand); }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/>
+  </svg>
+  <div>
+    <h1>Expoferia San Guillermo</h1>
+    <p>Control de entradas por QR</p>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('lector',this)">📷 Lector</button>
+  <button onclick="showTab('generar',this)">🎟️ Generar</button>
+  <button onclick="showTab('planilla',this)">📋 Planilla</button>
+  <button onclick="showTab('config',this)">⚙️ Config</button>
+</nav>
+
+<main>
+
+  <!-- ══ LECTOR ══ -->
+  <div class="panel active" id="panel-lector">
+    <div id="config-warning" class="config-banner" style="display:none">
+      <strong>⚠️ Sin conexión a Google Sheets</strong>
+      Configurá la URL del script en la pestaña ⚙️ Config para que los escaneos se registren en la planilla.
+    </div>
+
+    <div class="card">
+      <label>Día del evento activo</label>
+      <select id="diaActual">
+        <option value="1">Día 1</option>
+        <option value="2">Día 2</option>
+        <option value="3">Día 3</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cámara QR</div>
+      <div id="reader"></div>
+      <button class="btn btn-primary" id="btnCamara" onclick="toggleCamara()">▶ Activar cámara</button>
+      <div id="resultScan" class="result"></div>
+    </div>
+
+    <div class="card" id="cardUltimas">
+      <div class="card-title">Últimas lecturas</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Código</th><th>Comercio</th><th>Resultado</th></tr></thead>
+          <tbody id="tbUltimas"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">Sin lecturas aún</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ GENERAR ══ -->
+  <div class="panel" id="panel-generar">
+    <div class="card">
+      <div class="card-title">Nueva tanda de entradas</div>
+      <label>Nombre del comercio</label>
+      <input type="text" id="genComercio" placeholder="Ej: Ferretería López" />
+      <label>Día asignado</label>
+      <select id="genDia">
+        <option value="1">Día 1</option>
+        <option value="2">Día 2</option>
+        <option value="3">Día 3</option>
+      </select>
+      <label>Cantidad de entradas</label>
+      <input type="number" id="genCant" value="10" min="1" max="200" />
+      <button class="btn btn-primary" onclick="generarEntradas()">➕ Generar e imprimir</button>
+    </div>
+    <div id="genResultado"></div>
+  </div>
+
+  <!-- ══ PLANILLA ══ -->
+  <div class="panel" id="panel-planilla">
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-n" id="stTotal">—</div><div class="stat-l">Total</div></div>
+      <div class="stat-box"><div class="stat-n ok" id="stUsadas">—</div><div class="stat-l">Usadas</div></div>
+      <div class="stat-box"><div class="stat-n warn" id="stPend">—</div><div class="stat-l">Pendientes</div></div>
+    </div>
+    <div class="filters">
+      <select id="fComercio" onchange="cargarPlanilla()"><option value="">Todos los comercios</option></select>
+      <select id="fDia" onchange="cargarPlanilla()">
+        <option value="">Todos los días</option>
+        <option value="1">Día 1</option><option value="2">Día 2</option><option value="3">Día 3</option>
+      </select>
+      <select id="fEstado" onchange="cargarPlanilla()">
+        <option value="">Todos</option>
+        <option value="usada">Usadas</option>
+        <option value="pendiente">Pendientes</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="cargarPlanilla()">↺ Actualizar</button>
+    </div>
+    <div id="planillaContenido" class="loader">Cargando...</div>
+    <button class="btn btn-outline" onclick="exportarCSV()" style="margin-top:10px">⬇ Exportar CSV</button>
+  </div>
+
+  <!-- ══ CONFIG ══ -->
+  <div class="panel" id="panel-config">
+    <div class="card">
+      <div class="card-title">Conexión con Google Sheets</div>
+      <label>URL del Apps Script (Web App)</label>
+      <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/..." />
+      <button class="btn btn-primary" onclick="guardarConfig()">💾 Guardar y probar conexión</button>
+      <div id="configResult" style="margin-top:10px;font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">¿Cómo obtener la URL?</div>
+      <ol style="font-size:13px;color:var(--muted);padding-left:18px;line-height:2">
+        <li>Abrí tu Google Sheet</li>
+        <li>Menú <strong>Extensiones → Apps Script</strong></li>
+        <li>Pegá el código del archivo <code>Code.gs</code></li>
+        <li>Clic en <strong>Implementar → Nueva implementación</strong></li>
+        <li>Tipo: <strong>Aplicación web</strong></li>
+        <li>Acceso: <strong>Cualquier persona</strong></li>
+        <li>Copiá la URL y pegala arriba</li>
+      </ol>
+    </div>
+  </div>
+
+</main>
+
+<!-- QR Scanner library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!-- QR Generator library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+// ── Estado global ──
+let scanner = null;
+let camaraActiva = false;
+let ultimasLecturas = [];
+let entradasLocales = [];
+let contadorLocal = 100;
+const STORAGE_KEY = "expoferia_script_url";
+
+// ── Config ──
+function getScriptUrl() { return localStorage.getItem(STORAGE_KEY) || ""; }
+
+function guardarConfig() {
+  const url = document.getElementById("scriptUrl").value.trim();
+  if (!url) { document.getElementById("configResult").textContent = "⚠️ Ingresá la URL."; return; }
+  localStorage.setItem(STORAGE_KEY, url);
+  document.getElementById("configResult").textContent = "Probando conexión...";
+  apiCall("stats", {})
+    .then(() => {
+      document.getElementById("configResult").innerHTML = '<span style="color:var(--ok)">✅ Conexión exitosa con Google Sheets</span>';
+      document.getElementById("config-warning").style.display = "none";
+    })
+    .catch(() => {
+      document.getElementById("configResult").innerHTML = '<span style="color:var(--err)">❌ No se pudo conectar. Revisá la URL y los permisos.</span>';
+    });
+}
+
+// ── Tabs ──
+function showTab(id, btn) {
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+  document.getElementById("panel-" + id).classList.add("active");
+  btn.classList.add("active");
+  if (id === "planilla") { cargarStats(); cargarPlanilla(); }
+  if (id === "lector" && !getScriptUrl()) document.getElementById("config-warning").style.display = "block";
+}
+
+// ── API ──
+async function apiCall(action, params) {
+  const url = getScriptUrl();
+  if (!url) throw new Error("Sin URL configurada");
+  const qs = new URLSearchParams({ action, ...params }).toString();
+  const res = await fetch(`${url}?${qs}`);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || json.motivo);
+  return json;
+}
+
+// ── Scanner ──
+function toggleCamara() {
+  if (camaraActiva) detenerCamara();
+  else iniciarCamara();
+}
+
+function iniciarCamara() {
+  scanner = new Html5Qrcode("reader");
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 220, height: 220 } },
+    qrDecodedCallback,
+    () => {}
+  ).then(() => {
+    camaraActiva = true;
+    document.getElementById("btnCamara").textContent = "⏹ Detener cámara";
+  }).catch(err => {
+    mostrarResultado(false, "No se pudo acceder a la cámara", err.toString());
+  });
+}
+
+function detenerCamara() {
+  if (scanner) scanner.stop().then(() => {
+    camaraActiva = false;
+    document.getElementById("btnCamara").textContent = "▶ Activar cámara";
+    document.getElementById("reader").innerHTML = "";
+  });
+}
+
+function qrDecodedCallback(texto) {
+  // El QR tiene formato: EXPOFERIA:QR-001:Comercio:DIA1
+  const partes = texto.split(":");
+  const codigo = partes.length >= 2 ? partes[1] : texto;
+  procesarCodigo(codigo);
+}
+
+async function procesarCodigo(codigo) {
+  const dia = parseInt(document.getElementById("diaActual").value);
+  const resultDiv = document.getElementById("resultScan");
+  resultDiv.className = "result";
+  resultDiv.innerHTML = `<div class="icon">⏳</div><div>Validando <strong>${codigo}</strong>...</div>`;
+  resultDiv.style.display = "flex";
+
+  if (!getScriptUrl()) {
+    // Modo offline: validar localmente
+    validarLocal(codigo, dia);
+    return;
+  }
+
+  try {
+    const r = await apiCall("validar", { codigo, dia });
+    mostrarResultado(true, `✅ Entrada válida`, `Comercio: ${r.comercio} — Día ${r.dia} — ${r.hora}`);
+    registrarLectura(codigo, r.comercio, "✅ Válida");
+  } catch (err) {
+    let msg = "Error al validar";
+    if (err.message === "ya_usada") msg = "Esta entrada ya fue utilizada";
+    else if (err.message === "dia_incorrecto") msg = "Día incorrecto para esta entrada";
+    else if (err.message === "no_encontrado") msg = "Código no registrado en el sistema";
+    mostrarResultado(false, `❌ ${msg}`, codigo);
+    registrarLectura(codigo, "—", "❌ " + msg);
+  }
+}
+
+function validarLocal(codigo, dia) {
+  const entrada = entradasLocales.find(e => e.id === codigo);
+  if (!entrada) { mostrarResultado(false, "❌ Código no encontrado", codigo); registrarLectura(codigo,"—","❌ No encontrado"); return; }
+  if (entrada.estado === "usada") { mostrarResultado(false, "❌ Ya utilizada", `Comercio: ${entrada.comercio} — usada a las ${entrada.hora}`); registrarLectura(codigo,entrada.comercio,"❌ Ya usada"); return; }
+  if (entrada.dia !== dia) { mostrarResultado(false, "❌ Día incorrecto", `Esta entrada es para el Día ${entrada.dia}`); registrarLectura(codigo,entrada.comercio,"❌ Día incorrecto"); return; }
+  const hora = new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+  entrada.estado = "usada"; entrada.hora = hora;
+  mostrarResultado(true, "✅ Entrada válida", `Comercio: ${entrada.comercio} — Día ${dia} — ${hora}`);
+  registrarLectura(codigo, entrada.comercio, "✅ Válida");
+}
+
+function mostrarResultado(ok, titulo, detalle) {
+  const div = document.getElementById("resultScan");
+  div.className = "result " + (ok ? "ok" : "err");
+  div.innerHTML = `<div class="icon">${ok ? "✅" : "❌"}</div><div><strong>${titulo}</strong>${detalle ? "<br><span style='font-size:13px'>" + detalle + "</span>" : ""}</div>`;
+}
+
+function registrarLectura(codigo, comercio, estado) {
+  ultimasLecturas.unshift({ codigo, comercio, estado });
+  if (ultimasLecturas.length > 8) ultimasLecturas.pop();
+  const tb = document.getElementById("tbUltimas");
+  tb.innerHTML = ultimasLecturas.map(l =>
+    `<tr><td style="font-family:monospace;font-size:12px">${l.codigo}</td><td>${l.comercio}</td><td>${l.estado}</td></tr>`
+  ).join("");
+}
+
+// ── Generador ──
+async function generarEntradas() {
+  const comercio = document.getElementById("genComercio").value.trim();
+  const dia = parseInt(document.getElementById("genDia").value);
+  const cant = parseInt(document.getElementById("genCant").value) || 1;
+  if (!comercio) { alert("Ingresá el nombre del comercio"); return; }
+
+  const wrap = document.getElementById("genResultado");
+  wrap.innerHTML = '<div class="loader">Generando...</div>';
+  let ids = [];
+
+  if (getScriptUrl()) {
+    try {
+      const r = await apiCall("agregar", { comercio, dia, cantidad: cant });
+      ids = r.generadas;
+    } catch(e) {
+      wrap.innerHTML = `<div class="card" style="color:var(--err)">Error: ${e.message}</div>`;
+      return;
+    }
+  } else {
+    // Modo offline
+    for (let i = 0; i < cant; i++) {
+      const id = "QR-" + String(++contadorLocal).padStart(3,"0");
+      entradasLocales.push({ id, comercio, dia, estado:"pendiente", hora:"" });
+      ids.push(id);
+    }
+  }
+
+  wrap.innerHTML = `
+    <div class="card">
+      <div class="card-title">${cant} entrada${cant>1?"s":""} — ${comercio} — Día ${dia}</div>
+      <div class="qr-grid" id="qrGrid"></div>
+      <button class="btn btn-outline" onclick="window.print()" style="margin-top:12px">🖨️ Imprimir QR</button>
+    </div>`;
+
+  const grid = document.getElementById("qrGrid");
+  ids.forEach(id => {
+    const item = document.createElement("div");
+    item.className = "qr-card";
+    const canvas = document.createElement("canvas");
+    item.appendChild(canvas);
+    item.innerHTML += `<div class="qr-id">${id}</div><div class="qr-sub">${comercio}<br>Día ${dia}</div>`;
+    grid.appendChild(item);
+    new QRCode(canvas, {
+      text: `EXPOFERIA:${id}:${comercio}:DIA${dia}`,
+      width: 120, height: 120,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  });
+}
+
+// ── Planilla ──
+let todasEntradas = [];
+
+async function cargarStats() {
+  if (!getScriptUrl()) return;
+  try {
+    const r = await apiCall("stats", {});
+    document.getElementById("stTotal").textContent = r.total;
+    document.getElementById("stUsadas").textContent = r.usadas;
+    document.getElementById("stPend").textContent = r.pendientes;
+
+    // Poblar filtro de comercios
+    const sel = document.getElementById("fComercio");
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">Todos los comercios</option>';
+    Object.keys(r.comercios).sort().forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c; opt.textContent = c;
+      if (c === actual) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+async function cargarPlanilla() {
+  const contenido = document.getElementById("planillaContenido");
+  if (!getScriptUrl()) {
+    // Modo offline: mostrar entradas locales
+    renderTabla(entradasLocales);
+    return;
+  }
+  contenido.innerHTML = '<div class="loader">Cargando planilla...</div>';
+  try {
+    const params = {};
+    const fc = document.getElementById("fComercio").value;
+    const fd = document.getElementById("fDia").value;
+    const fe = document.getElementById("fEstado").value;
+    if (fc) params.comercio = fc;
+    if (fd) params.dia = fd;
+    if (fe) params.estado = fe;
+    const r = await apiCall("listar", params);
+    todasEntradas = r.entradas;
+    await cargarStats();
+    renderTabla(r.entradas);
+  } catch(e) {
+    contenido.innerHTML = `<div class="card" style="color:var(--err)">Error al cargar: ${e.message}</div>`;
+  }
+}
+
+function renderTabla(datos) {
+  const contenido = document.getElementById("planillaContenido");
+  if (!datos.length) { contenido.innerHTML = '<div class="loader">Sin resultados</div>'; return; }
+  contenido.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Código</th><th>Comercio</th><th>Día</th><th>Estado</th><th>Hora</th></tr></thead>
+        <tbody>${datos.map(e => `
+          <tr>
+            <td style="font-family:monospace;font-size:12px">${e.codigo||e.id}</td>
+            <td>${e.comercio}</td>
+            <td>Día ${e.dia}</td>
+            <td><span class="badge ${e.estado==="usada"?"badge-ok":"badge-pend"}">${e.estado==="usada"?"Usada":"Pendiente"}</span></td>
+            <td style="color:var(--muted);font-size:12px">${e.hora||"—"}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function exportarCSV() {
+  const datos = todasEntradas.length ? todasEntradas : entradasLocales;
+  const header = "Código,Comercio,Día,Estado,Hora de uso\n";
+  const rows = datos.map(e =>
+    `${e.codigo||e.id},"${e.comercio}",Día ${e.dia},${e.estado},${e.hora||""}`
+  ).join("\n");
+  const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url;
+  a.download = "entradas_expoferia.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── Init ──
+window.addEventListener("DOMContentLoaded", () => {
+  const url = getScriptUrl();
+  if (url) document.getElementById("scriptUrl").value = url;
+  else document.getElementById("config-warning").style.display = "block";
+});
+</script>
+</body>
+</html>
