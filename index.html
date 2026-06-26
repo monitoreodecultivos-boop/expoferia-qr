@@ -239,8 +239,7 @@
 <!-- QR Scanner library -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <!-- QR Generator library -->
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ── Estado global ──
 let scanner = null;
@@ -417,11 +416,11 @@ async function generarEntradas() {
   ids.forEach(id => {
     const item = document.createElement("div");
     item.className = "qr-card";
-    const qrDiv = document.createElement("div");
-    item.appendChild(qrDiv);
+    const canvas = document.createElement("canvas");
+    item.appendChild(canvas);
     item.innerHTML += `<div class="qr-id">${id}</div><div class="qr-sub">${comercio}<br>Día ${dia}</div>`;
     grid.appendChild(item);
-    new QRCode(qrDiv, {
+    new QRCode(canvas, {
       text: `EXPOFERIA:${id}:${comercio}:DIA${dia}`,
       width: 120, height: 120,
       correctLevel: QRCode.CorrectLevel.M
