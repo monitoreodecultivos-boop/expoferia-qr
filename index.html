@@ -316,11 +316,30 @@ function detenerCamara() {
   });
 }
 
+// ── Bloqueo anti-doble lectura ──
+let escaneando = false;
+let ultimoCodigoLeido = "";
+let timerBloqueo = null;
+
 function qrDecodedCallback(texto) {
   // El QR tiene formato: EXPOFERIA:QR-001:Comercio:DIA1
   const partes = texto.split(":");
   const codigo = partes.length >= 2 ? partes[1] : texto;
-  procesarCodigo(codigo);
+
+  // Ignorar si ya estamos procesando o es el mismo código reciente
+  if (escaneando || codigo === ultimoCodigoLeido) return;
+
+  escaneando = true;
+  ultimoCodigoLeido = codigo;
+
+  procesarCodigo(codigo).finally(() => {
+    // Desbloquear después de 4 segundos para permitir el siguiente escaneo
+    clearTimeout(timerBloqueo);
+    timerBloqueo = setTimeout(() => {
+      escaneando = false;
+      ultimoCodigoLeido = "";
+    }, 4000);
+  });
 }
 
 async function procesarCodigo(codigo) {
