@@ -238,8 +238,7 @@
 
 <!-- QR Scanner library -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<!-- QR Generator library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <script>
 // ── Estado global ──
 let scanner = null;
@@ -414,17 +413,15 @@ async function generarEntradas() {
 
   const grid = document.getElementById("qrGrid");
   ids.forEach(id => {
+    const texto = `EXPOFERIA:${id}:${comercio}:DIA${dia}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(texto)}`;
     const item = document.createElement("div");
     item.className = "qr-card";
-    const canvas = document.createElement("canvas");
-    item.appendChild(canvas);
-    item.innerHTML += `<div class="qr-id">${id}</div><div class="qr-sub">${comercio}<br>Día ${dia}</div>`;
+    item.innerHTML = `
+      <img src="${qrUrl}" width="120" height="120" alt="QR ${id}" style="display:block;margin:0 auto 6px;border-radius:4px" />
+      <div class="qr-id">${id}</div>
+      <div class="qr-sub">${comercio}<br>Día ${dia}</div>`;
     grid.appendChild(item);
-    new QRCode(canvas, {
-      text: `EXPOFERIA:${id}:${comercio}:DIA${dia}`,
-      width: 120, height: 120,
-      correctLevel: QRCode.CorrectLevel.M
-    });
   });
 }
 
